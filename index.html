@@ -93,9 +93,9 @@
         // pero el POST sí llega al Apps Script y se guarda en Sheets.
         await fetch(SCRIPT_URL, {
           method: "POST",
-          mode: "no-cors",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
+          mode: "no-cors",               // mantiene simple y evita bloqueos
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload)  // Apps Script lo parsea como JSON
         });
 
         $("estado").textContent = "¡Registro enviado! Puedes cerrar esta ventana.";
