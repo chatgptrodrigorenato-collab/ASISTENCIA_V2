@@ -1,61 +1,122 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>Registro con ubicación</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Registro de Asistencia con Ubicación</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; padding: 20px; max-width: 520px; margin: 0 auto; }
+    h1 { font-size: 1.2rem; margin-bottom: 12px; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; }
+    label { display:block; margin: 10px 0 6px; font-weight: 600; }
+    input { width: 100%; padding: 10px; border-radius: 8px; border:1px solid #ccc; }
+    button { margin-top: 14px; padding: 10px 14px; border:0; border-radius: 8px; cursor:pointer; }
+    .primary { background:#2563eb; color:white; }
+    .muted { color:#555; font-size:.9rem; }
+    .ok { color: #0a8754; font-weight: 600; }
+    .err { color: #b00020; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h1>Registro de asistencia con ubicación</h1>
+  <div class="card">
+    <p class="muted">Completa tus datos. La ubicación se toma automáticamente (debes permitir el acceso).</p>
+
+    <label for="dni">DNI</label>
+    <input id="dni" type="text" inputmode="numeric" autocomplete="off" placeholder="Ej. 12345678" />
+
+    <label for="nombre">Nombre</label>
+    <input id="nombre" type="text" autocomplete="off" placeholder="Tu nombre" />
+
+    <label for="apellido">Apellido</label>
+    <input id="apellido" type="text" autocomplete="off" placeholder="Tu apellido" />
+
+    <button id="btnEnviar" class="primary">Enviar registro</button>
+    <p id="estado" class="muted" style="margin-top:10px;"></p>
+  </div>
+
   <script>
-    function registrarUbicacion() {
-      if (!navigator.geolocation) {
-        alert("Tu navegador no soporta geolocalización.");
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx2d7KKIA7fBvznjXnhixB98Dbm1aDsgS7qlClDcLzFVX_8CGt1Ddbf524NstUAgRqA/exec";
+
+    const $ = (id) => document.getElementById(id);
+    let ultimaUbicacion = null;
+
+    // Toma la ubicación apenas carga (si el usuario acepta)
+    function obtenerUbicacion() {
+      if (!("geolocation" in navigator)) {
+        $("estado").textContent = "Tu navegador no soporta geolocalización.";
+        $("estado").className = "err";
         return;
       }
-
+      $("estado").textContent = "Obteniendo ubicación...";
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const lat = position.coords.latitude.toFixed(6);
-          const lng = position.coords.longitude.toFixed(6);
-          const ubicacion = `${lat},${lng}`;
-
-          const dni = prompt("Ingresa tu DNI:");
-          const nombre = prompt("Ingresa tu nombre:");
-          const apellido = prompt("Ingresa tu apellido:");
-
-          const data = {
-            dni,
-            nombre,
-            apellido,
-            ubicacion
-          };
-
-          const url = "https://script.google.com/macros/s/AKfycbw-M7advyUj9KkYv1d1BLXTdiq3kg_LwlwseB9mf58jr6BsSXsmbXthwSpwZHaTZdSJ/exec";
-
-          fetch(url, {
-            method: "POST",
-            body: JSON.stringify(data),
-            headers: {
-              "Content-Type": "application/json"
-            }
-          })
-          .then(response => response.text())
-          .then(result => {
-            alert("Registro completado correctamente.");
-          })
-          .catch(error => {
-            alert("Error al registrar ubicación.");
-            console.error(error);
-          });
+        pos => {
+          const lat = pos.coords.latitude.toFixed(6);
+          const lng = pos.coords.longitude.toFixed(6);
+          ultimaUbicacion = `${lat},${lng}`;
+          $("estado").textContent = `Ubicación capturada: ${ultimaUbicacion}`;
+          $("estado").className = "ok";
         },
-        (error) => {
-          alert("No se pudo obtener ubicación. Permite el acceso en el navegador.");
-          console.error(error);
-        }
+        err => {
+          $("estado").textContent = "No se pudo obtener la ubicación. Permite el acceso e inténtalo de nuevo.";
+          $("estado").className = "err";
+          console.error(err);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     }
 
-    window.onload = registrarUbicacion;
+    async function enviarRegistro() {
+      const dni = $("dni").value.trim();
+      const nombre = $("nombre").value.trim();
+      const apellido = $("apellido").value.trim();
+
+      if (!dni || !nombre || !apellido) {
+        $("estado").textContent = "Completa DNI, nombre y apellido.";
+        $("estado").className = "err";
+        return;
+      }
+      if (!ultimaUbicacion) {
+        $("estado").textContent = "Aún no se capturó la ubicación. Espera unos segundos o recarga la página.";
+        $("estado").className = "err";
+        return;
+      }
+
+      const payload = { dni, nombre, apellido, ubicacion: ultimaUbicacion };
+
+      $("btnEnviar").disabled = true;
+      $("estado").textContent = "Enviando registro...";
+      $("estado").className = "muted";
+
+      try {
+        // no-cors: el navegador no permitirá leer la respuesta,
+        // pero el POST sí llega al Apps Script y se guarda en Sheets.
+        await fetch(SCRIPT_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        $("estado").textContent = "¡Registro enviado! Puedes cerrar esta ventana.";
+        $("estado").className = "ok";
+
+        // Limpieza opcional
+        $("dni").value = "";
+        $("nombre").value = "";
+        $("apellido").value = "";
+      } catch (e) {
+        console.error(e);
+        $("estado").textContent = "Hubo un problema al enviar. Verifica tu conexión e inténtalo de nuevo.";
+        $("estado").className = "err";
+      } finally {
+        $("btnEnviar").disabled = false;
+      }
+    }
+
+    $("btnEnviar").addEventListener("click", enviarRegistro);
+    // Iniciar
+    obtenerUbicacion();
   </script>
-</head>
-<body>
-  <h2>Registrando tu asistencia con ubicación...</h2>
 </body>
 </html>
