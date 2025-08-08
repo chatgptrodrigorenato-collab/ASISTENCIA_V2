@@ -16,7 +16,6 @@
           const lng = position.coords.longitude.toFixed(6);
           const ubicacion = `${lat},${lng}`;
 
-          // ➕ Aquí puedes pedir DNI, nombre, apellido desde prompts o formulario
           const dni = prompt("Ingresa tu DNI:");
           const nombre = prompt("Ingresa tu nombre:");
           const apellido = prompt("Ingresa tu apellido:");
@@ -28,8 +27,7 @@
             ubicacion
           };
 
-          // Reemplaza esta URL con tu propia URL del Apps Script desplegado
-          const url = "https://script.google.com/macros/s/AKfycb.../exec";
+          const url = "https://script.google.com/macros/s/AKfycbw-M7advyUj9KkYv1d1BLXTdiq3kg_LwlwseB9mf58jr6BsSXsmbXthwSpwZHaTZdSJ/exec";
 
           fetch(url, {
             method: "POST",
